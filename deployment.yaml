@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: healthybutnotready
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthybutnotready
+  labels:
+    app: healthybutnotready
+spec:
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8080
+  selector:
+    app: healthybutnotready
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthybutnotready
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: healthybutnotready
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: healthybutnotready
+        version: v1
+    spec:
+      serviceAccountName: healthybutnotready
+      containers:
+      - image: docker.io/rinormaloku/healthybutnotready
+        imagePullPolicy: Always
+        name: healthybutnotready
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DELAY_UNTIL_READY
+          value: "15s"
+        - name: GRACEFUL_SHUTDOWN_DURATION
+          value: "1ms"
+        - name: DELAY_REQUESTS_DURATION
+          value: "1s"      
+        livenessProbe:
+          httpGet:
+            path: /healthy
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 3
